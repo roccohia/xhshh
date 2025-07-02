@@ -1,0 +1,20 @@
+{
+    "platform": "xiaohongshu",
+    "cookie": {
+      "a1": "197ca320564bs8ie12nz1q79x8on800fjmq9v736y50000420014",
+      "web_session": "040069b5cc8f6d012c7673a2513a4bc95d19ba",
+      "webId": "4e23234ce37a04c8d3830db2aeb5a4c6",
+      "gid": "yjWS0qJyfKVWyjWS0qJ826WqK4DMY3dyJIuyAKvAWjCYlj28IY88ih8884J88y48S4yfSY20",
+      "acw_tc": "0a00d7db17514439649696587e75f810b97c2a1559ed1758dd8864b197f4b0",
+      "abRequestId": "6cbd2f23-fc85-5b6d-9ff0-7561c425f851",
+      "sec_poison_id": "93de35da-5909-49ea-8d53-703bbaf9ca4c",
+      "websectiga": "16f444b9ff5e3d7e258b5f7674489196303a0b160e16647c6c2b4dcb609f4134",
+      "webBuild": "4.70.2",
+      "xsecappid": "xhs-pc-web",
+      "loadts": "1751444010986"
+    },
+    "headers": {
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+    }
+  }
+  

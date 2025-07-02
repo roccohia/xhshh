@@ -1,0 +1,105 @@
+name: 小红书数据分析自动化任务
+
+on:
+  schedule:
+    # 每天北京时间 9:00 运行 (UTC 1:00)
+    - cron: '0 1 * * *'
+  workflow_dispatch:  # 允许手动触发
+
+env:
+  TZ: Asia/Shanghai
+
+jobs:
+  xhs-analysis:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: 检出代码
+      uses: actions/checkout@v4
+      
+    - name: 设置 Python 环境
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+        cache: 'pip'
+        
+    - name: 安装依赖
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        
+    - name: 创建必要目录
+      run: |
+        mkdir -p core/media_crawler/data/xhs
+        mkdir -p output
+        mkdir -p logs
+        
+    - name: 设置时区
+      run: |
+        sudo timedatectl set-timezone Asia/Shanghai
+        
+    - name: 运行数据爬取
+      env:
+        PYTHONPATH: ${{ github.workspace }}
+      run: |
+        echo "开始爬取小红书数据..."
+        python scripts/run_crawler_enhanced.py --keyword "普拉提,健身,瑜伽" --limit 100
+      continue-on-error: true
+      
+    - name: 检查爬取结果
+      id: check_data
+      run: |
+        if [ -d "core/media_crawler/data/xhs" ] && [ "$(ls -A core/media_crawler/data/xhs/*.csv 2>/dev/null)" ]; then
+          echo "data_exists=true" >> $GITHUB_OUTPUT
+          latest_file=$(ls -t core/media_crawler/data/xhs/*_search_contents_*.csv | head -1)
+          echo "latest_file=$latest_file" >> $GITHUB_OUTPUT
+          echo "找到数据文件: $latest_file"
+        else
+          echo "data_exists=false" >> $GITHUB_OUTPUT
+          echo "未找到爬取数据，将使用示例数据"
+        fi
+        
+    - name: 运行数据分析
+      if: steps.check_data.outputs.data_exists == 'true'
+      env:
+        PYTHONPATH: ${{ github.workspace }}
+      run: |
+        echo "开始数据分析..."
+        python analysis/run_analysis_simple.py --input latest
+      continue-on-error: true
+      
+    - name: 生成 Notion 内容日历
+      if: steps.check_data.outputs.data_exists == 'true'
+      env:
+        PYTHONPATH: ${{ github.workspace }}
+      run: |
+        echo "生成 Notion 内容日历..."
+        python analysis/export_notionsheet.py --days 30
+      continue-on-error: true
+      
+    - name: 推送到 Telegram
+      env:
+        BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+        CHAT_ID: ${{ secrets.CHAT_ID }}
+        PYTHONPATH: ${{ github.workspace }}
+      run: |
+        echo "推送结果到 Telegram..."
+        python scripts/telegram_push.py --token "$BOT_TOKEN" --chat-id "$CHAT_ID"
+      continue-on-error: true
+      
+    - name: 上传分析结果
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: analysis-results-${{ github.run_number }}
+        path: |
+          output/
+          logs/
+        retention-days: 7
+        
+    - name: 清理旧文件
+      run: |
+        # 保留最近3天的数据文件
+        find core/media_crawler/data/xhs -name "*.csv" -mtime +3 -delete 2>/dev/null || true
+        find output -name "*.csv" -mtime +7 -delete 2>/dev/null || true
+        find output -name "*.png" -mtime +7 -delete 2>/dev/null || true

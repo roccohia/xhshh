@@ -1,0 +1,24 @@
+# 基础依赖
+requests
+pandas
+tqdm
+argparse
+
+# 数据分析依赖
+jieba
+wordcloud
+matplotlib
+seaborn
+numpy
+openpyxl
+
+# Telegram 推送依赖
+python-telegram-bot
+glob2
+
+# 可选：AI 分析
+openai
+
+# 系统依赖
+python-dateutil
+pytz
