@@ -65,8 +65,9 @@ jobs:
           echo "✅ 发现真实数据文件"
           ls -la core/media_crawler/data/xhs/*.csv
         else
-          echo "⚠️  未发现数据文件，创建示例数据"
-          python scripts/run_crawler_simple.py --limit 50 --create-dummy
+          echo "❌ 未发现真实数据文件"
+          echo "🚫 不会生成模拟数据，只使用真实数据进行分析"
+          echo "💡 请检查 Cookie 配置或网络连接"
         fi
       continue-on-error: true
       
@@ -80,7 +81,7 @@ jobs:
           echo "找到数据文件: $latest_file"
         else
           echo "data_exists=false" >> $GITHUB_OUTPUT
-          echo "未找到爬取数据，将使用示例数据"
+          echo "未找到真实爬取数据，跳过分析步骤"
         fi
         
     - name: 运行数据分析

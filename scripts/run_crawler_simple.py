@@ -186,33 +186,7 @@ def check_output_files():
         return False
 
 
-def create_dummy_data():
-    """创建示例数据（如果爬取失败）"""
-    print("🔧 创建示例数据...")
-    
-    # 确保输出目录存在
-    output_dir = 'core/media_crawler/data/xhs'
-    os.makedirs(output_dir, exist_ok=True)
-    
-    # 创建示例 CSV 文件
-    timestamp = datetime.now().strftime("%Y-%m-%d")
-    dummy_file = os.path.join(output_dir, f'1_search_contents_{timestamp}.csv')
-    
-    dummy_data = """note_id,type,title,desc,time,last_update_time,user_id,nickname,avatar,liked_count,collected_count,comment_count,share_count,note_url
-1,normal,普拉提入门教程,适合新手的普拉提动作,2025-07-02,2025-07-02,user1,普拉提老师,avatar1.jpg,150,80,20,10,https://www.xiaohongshu.com/note1
-2,normal,健身房普拉提体验,分享我的健身房普拉提课程体验,2025-07-02,2025-07-02,user2,健身达人,avatar2.jpg,200,120,30,15,https://www.xiaohongshu.com/note2
-3,normal,瑜伽vs普拉提,两种运动方式的区别和选择,2025-07-02,2025-07-02,user3,运动博主,avatar3.jpg,300,180,45,25,https://www.xiaohongshu.com/note3
-"""
-    
-    try:
-        with open(dummy_file, 'w', encoding='utf-8') as f:
-            f.write(dummy_data)
-        
-        print(f"✅ 示例数据已创建: {dummy_file}")
-        return True
-    except Exception as e:
-        print(f"❌ 创建示例数据失败: {e}")
-        return False
+
 
 
 def main():
@@ -233,11 +207,7 @@ def main():
         default=50,
         help='爬取数量限制 (默认: 50)'
     )
-    parser.add_argument(
-        '--create-dummy',
-        action='store_true',
-        help='如果爬取失败，创建示例数据'
-    )
+
     
     args = parser.parse_args()
     
@@ -265,12 +235,12 @@ def main():
     has_output = check_output_files()
     
     if not success or not has_output:
-        if args.create_dummy:
-            print("🔧 爬取失败，创建示例数据以便后续分析...")
-            create_dummy_data()
-            has_output = True
-        else:
-            print("💡 提示: 使用 --create-dummy 参数可在爬取失败时创建示例数据")
+        print("❌ 爬取失败，没有获取到任何真实数据")
+        print("💡 可能的原因:")
+        print("   - Cookie 已过期，需要更新")
+        print("   - 小红书 API 端点已变更")
+        print("   - 网络连接问题")
+        print("   - 反爬机制阻止了请求")
     
     if has_output:
         print("\n✅ 爬虫任务完成!")
@@ -278,7 +248,8 @@ def main():
         return True
     else:
         print("\n❌ 爬虫任务失败!")
-        print("💡 请检查网络连接、Cookie 配置或使用 --create-dummy 参数")
+        print("💡 请检查网络连接和 Cookie 配置")
+        print("🚫 不会生成模拟数据，只使用真实数据进行分析")
         return False
 
 

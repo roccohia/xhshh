@@ -50,19 +50,19 @@ class XHSDirectCrawler:
 
         notes = []
 
-        # 首先尝试真实爬取
+        # 只尝试真实爬取，不使用模拟数据
         print("🚀 尝试真实数据爬取...")
         try:
             real_notes = self.try_real_crawl(keyword, limit)
             if real_notes and len(real_notes) > 0:
                 print(f"✅ 成功获取 {len(real_notes)} 条真实数据")
                 return real_notes
+            else:
+                print(f"❌ 关键词 '{keyword}' 未获取到任何真实数据")
+                return []
         except Exception as e:
-            print(f"⚠️  真实爬取失败: {e}")
-
-        # 如果真实爬取失败，使用高质量示例数据
-        print("🎨 使用高质量示例数据（基于真实内容模式）")
-        return self.create_realistic_sample_data(keyword, limit)
+            print(f"❌ 真实爬取失败: {e}")
+            return []
 
         # 本地环境尝试真实请求
         page = 1
@@ -168,56 +168,56 @@ class XHSDirectCrawler:
 
                 response = requests.get(search_url, headers=headers, params=params, timeout=15)
 
-            print(f"📡 API 响应状态: {response.status_code}")
+                print(f"📡 API 响应状态: {response.status_code}")
 
-            if response.status_code == 200:
-                try:
-                    data = response.json()
+                if response.status_code == 200:
+                    try:
+                        data = response.json()
 
-                    if data.get('success') and data.get('data'):
-                        items = data['data'].get('items', [])
-                        notes = []
+                        if data.get('success') and data.get('data'):
+                            items = data['data'].get('items', [])
+                            notes = []
 
-                        for item in items[:limit]:
-                            if 'note_card' in item:
-                                note_card = item['note_card']
-                                user_info = note_card.get('user', {})
-                                interact_info = note_card.get('interact_info', {})
+                            for item in items[:limit]:
+                                if 'note_card' in item:
+                                    note_card = item['note_card']
+                                    user_info = note_card.get('user', {})
+                                    interact_info = note_card.get('interact_info', {})
 
-                                note = {
-                                    'note_id': note_card.get('note_id', f'real_{int(time.time())}_{random.randint(1000, 9999)}'),
-                                    'type': note_card.get('type', 'normal'),
-                                    'title': note_card.get('display_title', ''),
-                                    'desc': note_card.get('desc', ''),
-                                    'time': int(time.time() * 1000),
-                                    'last_update_time': int(time.time() * 1000),
-                                    'user_id': user_info.get('user_id', f'user_{random.randint(10000, 99999)}'),
-                                    'nickname': user_info.get('nickname', f'用户{random.randint(1000, 9999)}'),
-                                    'avatar': user_info.get('avatar', 'https://avatar.example.com/default.jpg'),
-                                    'liked_count': interact_info.get('liked_count', random.randint(10, 1000)),
-                                    'collected_count': interact_info.get('collected_count', random.randint(5, 500)),
-                                    'comment_count': interact_info.get('comment_count', random.randint(1, 100)),
-                                    'share_count': interact_info.get('share_count', random.randint(0, 50)),
-                                    'note_url': f"https://www.xiaohongshu.com/explore/{note_card.get('note_id', '')}"
-                                }
+                                    note = {
+                                        'note_id': note_card.get('note_id', f'real_{int(time.time())}_{random.randint(1000, 9999)}'),
+                                        'type': note_card.get('type', 'normal'),
+                                        'title': note_card.get('display_title', ''),
+                                        'desc': note_card.get('desc', ''),
+                                        'time': int(time.time() * 1000),
+                                        'last_update_time': int(time.time() * 1000),
+                                        'user_id': user_info.get('user_id', f'user_{random.randint(10000, 99999)}'),
+                                        'nickname': user_info.get('nickname', f'用户{random.randint(1000, 9999)}'),
+                                        'avatar': user_info.get('avatar', 'https://avatar.example.com/default.jpg'),
+                                        'liked_count': interact_info.get('liked_count', random.randint(10, 1000)),
+                                        'collected_count': interact_info.get('collected_count', random.randint(5, 500)),
+                                        'comment_count': interact_info.get('comment_count', random.randint(1, 100)),
+                                        'share_count': interact_info.get('share_count', random.randint(0, 50)),
+                                        'note_url': f"https://www.xiaohongshu.com/explore/{note_card.get('note_id', '')}"
+                                    }
 
-                                # 确保标题不为空
-                                if not note['title']:
-                                    note['title'] = f"{keyword}相关内容分享"
+                                    # 确保标题不为空
+                                    if not note['title']:
+                                        note['title'] = f"{keyword}相关内容分享"
 
-                                notes.append(note)
+                                    notes.append(note)
 
-                        if notes:
-                            print(f"🎉 成功解析 {len(notes)} 条真实数据")
-                            return notes
+                            if notes:
+                                print(f"🎉 成功解析 {len(notes)} 条真实数据")
+                                return notes
+                            else:
+                                print("⚠️  解析到的数据为空")
                         else:
-                            print("⚠️  解析到的数据为空")
-                    else:
-                        print(f"⚠️  API 返回格式异常: {data}")
+                            print(f"⚠️  API 返回格式异常: {data}")
 
-                except Exception as e:
-                    print(f"⚠️  JSON 解析失败: {e}")
-                    print(f"响应内容: {response.text[:200]}...")
+                    except Exception as e:
+                        print(f"⚠️  JSON 解析失败: {e}")
+                        print(f"响应内容: {response.text[:200]}...")
                 else:
                     print(f"⚠️  HTTP 错误: {response.status_code}")
                     print(f"响应内容: {response.text[:200]}...")
@@ -234,78 +234,7 @@ class XHSDirectCrawler:
 
         return None
 
-    def create_realistic_sample_data(self, keyword, limit=50):
-        """创建高质量的示例数据"""
-        print(f"🎨 为关键词 '{keyword}' 创建 {limit} 条高质量示例数据")
 
-        # 根据关键词定制内容
-        content_templates = {
-            '普拉提': [
-                '普拉提新手入门指南，零基础也能轻松上手',
-                '每天10分钟普拉提，改善体态告别驼背',
-                '普拉提vs瑜伽，哪个更适合你？',
-                '产后修复必备：温和普拉提动作分享',
-                '普拉提器械训练，在家也能专业练习',
-                '普拉提呼吸法详解，掌握核心要领',
-                '普拉提塑形效果分享，坚持3个月的变化',
-                '普拉提教练推荐：必备装备清单'
-            ],
-            '健身': [
-                '健身房新手避坑指南，少走弯路',
-                '居家健身计划，无器械也能练出好身材',
-                '健身饮食搭配，吃对了事半功倍',
-                '女生力量训练不会变金刚芭比',
-                '健身后拉伸的重要性，别忽视了',
-                '健身进阶：如何突破平台期',
-                '健身装备推荐，性价比之选',
-                '健身打卡30天，身体的神奇变化'
-            ],
-            '瑜伽': [
-                '瑜伽初学者必知的基础体式',
-                '晨起瑜伽序列，唤醒身体活力',
-                '睡前瑜伽，帮助深度睡眠',
-                '瑜伽冥想入门，找到内心平静',
-                '瑜伽垫选择指南，材质很重要',
-                '瑜伽与普拉提的区别，你了解吗',
-                '瑜伽服穿搭，舒适与美观并存',
-                '瑜伽练习中的常见误区'
-            ]
-        }
-
-        # 获取对应的内容模板
-        templates = content_templates.get(keyword, content_templates['健身'])
-
-        notes = []
-        for i in range(limit):
-            # 循环使用模板
-            template_idx = i % len(templates)
-            title = templates[template_idx]
-
-            # 生成真实感的数据
-            base_likes = random.randint(100, 2000)
-            base_collects = int(base_likes * random.uniform(0.3, 0.8))
-            base_comments = int(base_likes * random.uniform(0.05, 0.2))
-            base_shares = int(base_likes * random.uniform(0.02, 0.1))
-
-            note_data = {
-                'note_id': f'{keyword}_note_{i+1}_{int(time.time())}',
-                'type': 'normal',
-                'title': title,
-                'desc': f'关于{keyword}的详细分享，包含实用技巧和个人经验总结。适合初学者和进阶者参考学习。',
-                'time': datetime.now().strftime('%Y-%m-%d'),
-                'last_update_time': datetime.now().strftime('%Y-%m-%d'),
-                'user_id': f'user_{keyword}_{i+1}',
-                'nickname': f'{keyword}达人{i+1}',
-                'avatar': f'https://avatar.example.com/{keyword}_{i+1}.jpg',
-                'liked_count': base_likes,
-                'collected_count': base_collects,
-                'comment_count': base_comments,
-                'share_count': base_shares,
-                'note_url': f'https://www.xiaohongshu.com/explore/{keyword}_note_{i+1}'
-            }
-            notes.append(note_data)
-
-        return notes
     
     def extract_note_data(self, item):
         """提取笔记数据"""
@@ -483,9 +412,9 @@ def main():
         # 保存数据
         timestamp = datetime.now().strftime("%Y-%m-%d")
         output_file = f"core/media_crawler/data/xhs/1_search_contents_{timestamp}.csv"
-        
+
         success = crawler.save_to_csv(all_notes, output_file)
-        
+
         if success:
             print(f"🎉 爬取完成！获取了 {len(all_notes)} 条真实数据")
             return True
@@ -493,7 +422,16 @@ def main():
             print("❌ 数据保存失败")
             return False
     else:
-        print("❌ 没有获取到任何数据")
+        print("❌ 没有获取到任何真实数据")
+        print("💡 可能的原因:")
+        print("   - Cookie 已过期，需要更新")
+        print("   - 小红书 API 端点已变更")
+        print("   - 网络连接问题")
+        print("   - 反爬机制阻止了请求")
+        print("🔧 建议:")
+        print("   1. 更新 Cookie 配置")
+        print("   2. 检查网络连接")
+        print("   3. 稍后重试")
         return False
 
 

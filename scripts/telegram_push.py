@@ -147,7 +147,17 @@ async def push_to_telegram(bot_token, chat_id, output_dir="output"):
     files = find_latest_files(output_dir)
     
     if not files:
-        error_msg = "❌ 未找到任何分析文件，请检查分析是否正常运行"
+        # 检查是否有真实数据
+        data_dir = "core/media_crawler/data/xhs"
+        if os.path.exists(data_dir):
+            csv_files = glob.glob(os.path.join(data_dir, "*.csv"))
+            if csv_files:
+                error_msg = "❌ 找到数据文件但分析失败，请检查分析脚本"
+            else:
+                error_msg = "❌ 未获取到真实数据\n\n💡 可能原因:\n• Cookie 已过期\n• 小红书 API 变更\n• 网络连接问题\n• 反爬机制阻止\n\n🔧 建议:\n• 更新 Cookie 配置\n• 检查网络连接\n• 稍后重试\n\n🚫 系统不会生成模拟数据，只使用真实数据进行分析"
+        else:
+            error_msg = "❌ 数据目录不存在，爬虫可能未正常运行"
+
         await send_telegram_message(bot_token, chat_id, error_msg)
         return False
     
