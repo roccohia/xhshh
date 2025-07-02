@@ -325,12 +325,13 @@ HEADLESS = True
 
 def main():
     print("🚀 小红书直接爬虫启动")
-    
+
     # 加载配置
     cookies = load_config()
     if not cookies:
-        print("❌ 未找到有效的 Cookie 配置")
-        return False
+        print("🔧 使用内置默认 Cookie 配置")
+        # 使用你提供的 Cookie 作为默认值
+        cookies = "a1=197cc3cc62chkm59p3yqrj60qnm93qtek44waomcj50000248784; abRequestId=6a0296cc-b4f9-5147-8b38-7cb490e1b7a0; acw_tc=0a00d80e17514782241701707e5476dbed780104c674b358b666cf759dfc93; gid=yjWSSqSff8T8yjWSSqSSK4l6JSxT62jUqvAF4SVVK8AI6E28jqA9d0888J4YWY480dK2fJW8; loadts=1751478269443; sec_poison_id=8d1696fa-92a4-4551-850a-f0c29a6b9b67; unread={%22ub%22:%2268418d360000000012006bfb%22%2C%22ue%22:%22684c2700000000002100b751%22%2C%22uc%22:22}; web_session=040069b5cc8f6d012c769a27503a4b23bdf114; webBuild=4.70.2; webId=849390660f36c420889a1b5dc536fcbd; websectiga=f3d8eaee8a8c63016320d94a1bd00562d516a5417bc43a032a80cbf70f07d5c0; xsecappid=xhs-pc-web"
     
     print(f"✅ Cookie 配置已加载 ({len(cookies)} 字符)")
     
