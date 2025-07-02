@@ -12,9 +12,20 @@ import asyncio
 import time
 from datetime import datetime
 
-# 添加当前脚本目录到 Python 路径
+# 添加必要的路径到 Python 路径
 current_dir = os.path.dirname(os.path.abspath(__file__))
+project_root = os.path.dirname(current_dir)  # 项目根目录
+media_crawler_dir = os.path.join(project_root, 'core', 'media_crawler')
+
+# 添加路径到 sys.path
 sys.path.insert(0, current_dir)
+sys.path.insert(0, project_root)
+sys.path.insert(0, media_crawler_dir)
+
+print(f"🔧 Python 路径设置:")
+print(f"   当前目录: {current_dir}")
+print(f"   项目根目录: {project_root}")
+print(f"   MediaCrawler 目录: {media_crawler_dir}")
 
 from config_manager import create_config_manager
 
