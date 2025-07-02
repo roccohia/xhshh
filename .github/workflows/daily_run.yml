@@ -45,21 +45,28 @@ jobs:
         
     - name: 运行数据爬取
       env:
-        PYTHONPATH: ${{ github.workspace }}:${{ github.workspace }}/core/media_crawler
+        PYTHONPATH: ${{ github.workspace }}
       run: |
         echo "开始爬取小红书数据..."
         echo "当前工作目录: $(pwd)"
-        echo "检查项目结构:"
-        ls -la core/media_crawler/ | head -10
-
-        # 优先使用配置文件中的关键词，如果没有则使用默认关键词
+        echo "检查关键词配置:"
         if [ -f "config/keywords.txt" ]; then
           echo "使用配置文件中的关键词:"
           cat config/keywords.txt
-          python scripts/run_crawler_simple.py --limit 50 --create-dummy
         else
-          echo "使用默认关键词"
-          python scripts/run_crawler_simple.py --keyword "普拉提,健身,瑜伽" --limit 50 --create-dummy
+          echo "使用默认关键词: 普拉提,健身,瑜伽"
+        fi
+
+        echo "🚀 尝试真实数据爬取..."
+        python scripts/xhs_crawler_direct.py
+
+        echo "📁 检查爬取结果:"
+        if [ -d "core/media_crawler/data/xhs" ] && [ "$(ls -A core/media_crawler/data/xhs/*.csv 2>/dev/null)" ]; then
+          echo "✅ 发现真实数据文件"
+          ls -la core/media_crawler/data/xhs/*.csv
+        else
+          echo "⚠️  未发现数据文件，创建示例数据"
+          python scripts/run_crawler_simple.py --limit 50 --create-dummy
         fi
       continue-on-error: true
       
