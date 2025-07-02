@@ -98,13 +98,33 @@ def generate_wordcloud(word_counter, output_path, max_words=100):
         'C:/Windows/Fonts/simhei.ttf',  # Windows 黑体
         'C:/Windows/Fonts/msyh.ttf',    # Windows 微软雅黑
         '/System/Library/Fonts/PingFang.ttc',  # macOS
-        '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf'  # Linux
+        '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',  # Linux
+        '/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf',  # Linux
+        '/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc',  # Linux CJK
+        '/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc'  # Linux CJK
     ]
-    
+
     for font in possible_fonts:
         if os.path.exists(font):
             font_path = font
+            print(f"🔤 使用字体: {font}")
             break
+
+    if not font_path:
+        print("⚠️  未找到中文字体，尝试安装字体...")
+        # 在 GitHub Actions 环境中尝试安装字体
+        try:
+            import subprocess
+            subprocess.run(['apt-get', 'update'], capture_output=True)
+            subprocess.run(['apt-get', 'install', '-y', 'fonts-noto-cjk'], capture_output=True)
+            # 重新检查字体
+            for font in possible_fonts:
+                if os.path.exists(font):
+                    font_path = font
+                    print(f"🔤 安装后使用字体: {font}")
+                    break
+        except:
+            pass
     
     # 创建词云
     wordcloud = WordCloud(
@@ -122,7 +142,16 @@ def generate_wordcloud(word_counter, output_path, max_words=100):
     plt.figure(figsize=(15, 10))
     plt.imshow(wordcloud, interpolation='bilinear')
     plt.axis('off')
-    plt.title('小红书笔记标题关键词词云图', fontsize=16, pad=20)
+
+    # 设置标题（如果有中文字体）
+    if font_path:
+        # 设置中文字体属性
+        from matplotlib import font_manager
+        font_prop = font_manager.FontProperties(fname=font_path, size=16)
+        plt.title('小红书笔记标题关键词词云图', fontproperties=font_prop, pad=20)
+    else:
+        plt.title('Keywords WordCloud', fontsize=16, pad=20)
+
     plt.tight_layout()
     plt.savefig(output_path, dpi=300, bbox_inches='tight')
     plt.close()
@@ -134,8 +163,19 @@ def analyze_keyword_trends(df, keywords_df, output_dir):
     """分析关键词趋势"""
     print("📈 分析关键词趋势...")
     
-    # 转换时间戳
-    df['publish_date'] = pd.to_datetime(df['time'], unit='ms')
+    # 转换时间戳 - 处理不同的时间格式
+    try:
+        # 尝试作为时间戳处理
+        df['publish_date'] = pd.to_datetime(df['time'], unit='ms')
+    except (ValueError, TypeError):
+        try:
+            # 尝试作为日期字符串处理
+            df['publish_date'] = pd.to_datetime(df['time'])
+        except:
+            # 如果都失败，使用当前日期
+            df['publish_date'] = pd.Timestamp.now()
+            print("⚠️  时间格式无法解析，使用当前日期")
+
     df['month'] = df['publish_date'].dt.to_period('M')
     
     # 获取前10个关键词
