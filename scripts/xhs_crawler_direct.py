@@ -235,23 +235,92 @@ class XHSDirectCrawler:
 
 def load_config():
     """加载配置"""
-    config_file = 'core/media_crawler/config/base_config.py'
-    
-    if os.path.exists(config_file):
-        try:
-            # 读取配置文件
-            with open(config_file, 'r', encoding='utf-8') as f:
-                content = f.read()
-            
-            # 提取 COOKIES
-            for line in content.split('\n'):
-                if line.strip().startswith('COOKIES = '):
-                    cookies = line.split('COOKIES = ')[1].strip().strip('"\'')
-                    return cookies
-        except Exception as e:
-            print(f"⚠️  读取配置失败: {e}")
-    
-    return ""
+    # 尝试多个可能的配置文件路径
+    config_paths = [
+        'core/media_crawler/config/base_config.py',
+        'config/base_config.py',
+        'base_config.py'
+    ]
+
+    print("🔍 搜索配置文件...")
+    for config_file in config_paths:
+        print(f"   检查: {config_file}")
+        if os.path.exists(config_file):
+            print(f"   ✅ 找到配置文件: {config_file}")
+            try:
+                # 读取配置文件
+                with open(config_file, 'r', encoding='utf-8') as f:
+                    content = f.read()
+
+                # 提取 COOKIES
+                for line in content.split('\n'):
+                    if line.strip().startswith('COOKIES = '):
+                        cookies = line.split('COOKIES = ')[1].strip().strip('"\'')
+                        if cookies and cookies != '':
+                            print(f"   ✅ 找到 Cookie 配置 ({len(cookies)} 字符)")
+                            return cookies
+                        else:
+                            print(f"   ⚠️  Cookie 配置为空")
+
+                print(f"   ⚠️  未找到 COOKIES 配置行")
+            except Exception as e:
+                print(f"   ❌ 读取配置失败: {e}")
+        else:
+            print(f"   ❌ 文件不存在")
+
+    print("⚠️  所有配置文件路径都未找到有效配置")
+
+    # 如果没有找到配置文件，创建一个默认的
+    print("🔧 创建默认配置...")
+    return create_default_config()
+
+
+def create_default_config():
+    """创建默认配置"""
+    print("📁 创建默认配置文件...")
+
+    # 确保目录存在
+    config_dir = 'core/media_crawler/config'
+    os.makedirs(config_dir, exist_ok=True)
+
+    # 默认的 Cookie（你提供的）
+    default_cookies = "a1=197cc3cc62chkm59p3yqrj60qnm93qtek44waomcj50000248784; abRequestId=6a0296cc-b4f9-5147-8b38-7cb490e1b7a0; acw_tc=0a00d80e17514782241701707e5476dbed780104c674b358b666cf759dfc93; gid=yjWSSqSff8T8yjWSSqSSK4l6JSxT62jUqvAF4SVVK8AI6E28jqA9d0888J4YWY480dK2fJW8; loadts=1751478269443; sec_poison_id=8d1696fa-92a4-4551-850a-f0c29a6b9b67; unread={%22ub%22:%2268418d360000000012006bfb%22%2C%22ue%22:%22684c2700000000002100b751%22%2C%22uc%22:22}; web_session=040069b5cc8f6d012c769a27503a4b23bdf114; webBuild=4.70.2; webId=849390660f36c420889a1b5dc536fcbd; websectiga=f3d8eaee8a8c63016320d94a1bd00562d516a5417bc43a032a80cbf70f07d5c0; xsecappid=xhs-pc-web"
+
+    # 创建配置文件内容
+    config_content = f'''# -*- coding: utf-8 -*-
+"""
+MediaCrawler 基础配置文件
+"""
+
+# 登录相关配置
+LOGIN_TYPE = "cookie"  # qrcode or phone or cookie
+
+# 小红书 Cookie 配置
+COOKIES = "{default_cookies}"
+
+# 数据保存配置
+SAVE_DATA_OPTION = "csv"  # csv or db or json
+
+# 爬取数量配置
+CRAWLER_MAX_NOTES_COUNT = 100
+
+# 其他配置
+ENABLE_LOGIN_STATE_CACHE = True
+HEADLESS = True
+'''
+
+    config_file = os.path.join(config_dir, 'base_config.py')
+
+    try:
+        with open(config_file, 'w', encoding='utf-8') as f:
+            f.write(config_content)
+
+        print(f"✅ 默认配置文件已创建: {config_file}")
+        return default_cookies
+    except Exception as e:
+        print(f"❌ 创建配置文件失败: {e}")
+        # 直接返回默认 Cookie
+        return default_cookies
 
 
 def main():
