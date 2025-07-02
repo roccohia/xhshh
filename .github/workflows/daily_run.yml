@@ -16,6 +16,8 @@ jobs:
     steps:
     - name: 检出代码
       uses: actions/checkout@v4
+      with:
+        submodules: recursive
       
     - name: 设置 Python 环境
       uses: actions/setup-python@v5
@@ -33,6 +35,11 @@ jobs:
         mkdir -p core/media_crawler/data/xhs
         mkdir -p output
         mkdir -p logs
+        mkdir -p config
+        echo "检查 MediaCrawler 文件:"
+        ls -la core/media_crawler/main.py || echo "main.py 不存在"
+        echo "检查 MediaCrawler 目录结构:"
+        ls -la core/media_crawler/ | head -5
         
     - name: 设置时区
       run: |
