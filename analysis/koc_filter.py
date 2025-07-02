@@ -137,81 +137,118 @@ def calculate_koc_score(row):
     return min(score, 100)  # 最高100分
 
 
-def filter_koc_users(df, min_likes=200, max_followers=50000, min_engagement_rate=2.0):
-    """筛选 KOC 用户"""
-    print(f"🔍 筛选 KOC 用户 (点赞>{min_likes}, 粉丝<{max_followers}, 互动率>{min_engagement_rate}%)...")
-    
-    # 按用户聚合数据
+def check_keyword_match(titles, target_keywords):
+    """检查标题是否包含目标关键词"""
+    if not titles or not target_keywords:
+        return False
+
+    # 将所有标题合并为一个字符串
+    all_titles = ' '.join(str(title).lower() for title in titles if pd.notna(title))
+
+    # 检查是否包含任何目标关键词
+    for keyword in target_keywords:
+        if keyword.lower() in all_titles:
+            return True
+
+    return False
+
+
+def filter_koc_users(df, min_likes=200, min_followers=2000, max_followers=10000,
+                    target_keywords=None, min_engagement_rate=2.0):
+    """筛选 KOC 用户 - 更新的筛选标准"""
+    print(f"🔍 筛选 KOC 用户 (点赞≥{min_likes}, 粉丝{min_followers}-{max_followers}, 互动率≥{min_engagement_rate}%)...")
+
+    if target_keywords:
+        print(f"🎯 目标关键词: {', '.join(target_keywords)}")
+
+    # 按用户聚合数据，包含标题信息
     user_stats = df.groupby(['user_id', 'nickname']).agg({
         'liked_count': ['mean', 'max', 'sum'],
         'collected_count': ['mean', 'max', 'sum'],
         'comment_count': ['mean', 'max', 'sum'],
         'share_count': ['mean', 'max', 'sum'],
-        'title': 'count'  # 发布数量
+        'title': ['count', lambda x: list(x)]  # 发布数量和标题列表
     }).round(2)
-    
+
     # 重命名列
     user_stats.columns = [
         'avg_liked', 'max_liked', 'total_liked',
         'avg_collected', 'max_collected', 'total_collected',
         'avg_comment', 'max_comment', 'total_comment',
         'avg_share', 'max_share', 'total_share',
-        'post_count'
+        'post_count', 'title_list'
     ]
-    
+
     # 重置索引
     user_stats = user_stats.reset_index()
-    
+
     # 计算总互动数
     user_stats['avg_total_engagement'] = (
-        user_stats['avg_liked'] + user_stats['avg_collected'] + 
+        user_stats['avg_liked'] + user_stats['avg_collected'] +
         user_stats['avg_comment'] + user_stats['avg_share']
     )
-    
+
     user_stats['max_total_engagement'] = (
-        user_stats['max_liked'] + user_stats['max_collected'] + 
+        user_stats['max_liked'] + user_stats['max_collected'] +
         user_stats['max_comment'] + user_stats['max_share']
     )
-    
+
     # 估算粉丝数
     user_stats['estimated_followers'] = user_stats.apply(
         lambda row: estimate_follower_count(
-            row['nickname'], row['avg_liked'], 
+            row['nickname'], row['avg_liked'],
             row['avg_collected'], row['avg_comment']
         ), axis=1
     )
-    
+
     # 计算互动率
     user_stats['avg_engagement_rate'] = (
-        user_stats['avg_total_engagement'] / 
+        user_stats['avg_total_engagement'] /
         (user_stats['estimated_followers'] * 0.05)  # 假设5%的曝光率
     ).fillna(0) * 100
-    
+
+    # 检查关键词匹配
+    if target_keywords:
+        user_stats['keyword_match'] = user_stats['title_list'].apply(
+            lambda titles: check_keyword_match(titles, target_keywords)
+        )
+    else:
+        user_stats['keyword_match'] = True  # 如果没有指定关键词，默认匹配
+
     # 分类用户类型
     user_stats['user_type'] = user_stats.apply(
         lambda row: classify_user_type(
             row['nickname'], row['estimated_followers'], row['avg_total_engagement']
         ), axis=1
     )
-    
+
     # 计算 KOC 评分
     user_stats['koc_score'] = user_stats.apply(calculate_koc_score, axis=1)
-    
-    # 筛选条件
+
+    # 更新的筛选条件
     koc_filter = (
-        (user_stats['avg_liked'] >= min_likes) &
-        (user_stats['estimated_followers'] <= max_followers) &
+        (user_stats['avg_liked'] >= min_likes) &  # 点赞数 ≥ 200
+        (
+            # 粉丝数在范围内，或者粉丝数不可见（为0或很小）
+            ((user_stats['estimated_followers'] >= min_followers) &
+             (user_stats['estimated_followers'] <= max_followers)) |
+            (user_stats['estimated_followers'] < 1000)  # 粉丝数不可见的情况
+        ) &
         (user_stats['avg_engagement_rate'] >= min_engagement_rate) &
-        (user_stats['post_count'] >= 2)  # 至少发布2篇
+        (user_stats['post_count'] >= 2) &  # 至少发布2篇
+        (user_stats['keyword_match'] == True)  # 包含目标关键词
     )
-    
+
     koc_users = user_stats[koc_filter].copy()
-    
+
     # 按 KOC 评分排序
     koc_users = koc_users.sort_values('koc_score', ascending=False)
-    
+
     print(f"✅ 筛选出 {len(koc_users)} 个 KOC 用户")
-    
+    if target_keywords:
+        keyword_matched = len(koc_users[koc_users['keyword_match'] == True])
+        print(f"📝 其中 {keyword_matched} 个用户的内容包含目标关键词")
+
     return koc_users, user_stats
 
 
@@ -389,10 +426,21 @@ def main():
         help='最小平均点赞数 (默认: 200)'
     )
     parser.add_argument(
+        '--min-followers',
+        type=int,
+        default=2000,
+        help='最小粉丝数 (默认: 2000)'
+    )
+    parser.add_argument(
         '--max-followers',
         type=int,
-        default=50000,
-        help='最大粉丝数 (默认: 50000)'
+        default=10000,
+        help='最大粉丝数 (默认: 10000)'
+    )
+    parser.add_argument(
+        '--target-keywords',
+        type=str,
+        help='目标关键词，用逗号分隔 (如: 普拉提,健身,瑜伽)'
     )
     parser.add_argument(
         '--min-engagement-rate',
@@ -428,9 +476,16 @@ def main():
             if col in df.columns:
                 df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
         
+        # 处理目标关键词
+        target_keywords = None
+        if args.target_keywords:
+            target_keywords = [kw.strip() for kw in args.target_keywords.split(',')]
+            print(f"🎯 使用目标关键词: {target_keywords}")
+
         # 筛选 KOC 用户
         koc_users, all_users = filter_koc_users(
-            df, args.min_likes, args.max_followers, args.min_engagement_rate
+            df, args.min_likes, args.min_followers, args.max_followers,
+            target_keywords, args.min_engagement_rate
         )
         
         if len(koc_users) == 0:

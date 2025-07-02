@@ -19,6 +19,26 @@ sys.path.insert(0, current_dir)
 from config_manager import create_config_manager
 
 
+def load_keywords_from_config():
+    """从配置文件加载关键词"""
+    keywords_file = 'config/keywords.txt'
+
+    if os.path.exists(keywords_file):
+        try:
+            with open(keywords_file, 'r', encoding='utf-8') as f:
+                keywords = f.read().strip()
+                if keywords:
+                    print(f"📋 从配置文件加载关键词: {keywords}")
+                    return keywords
+        except Exception as e:
+            print(f"⚠️  读取关键词配置文件失败: {e}")
+
+    # 返回默认关键词
+    default_keywords = "普拉提,健身,瑜伽"
+    print(f"📋 使用默认关键词: {default_keywords}")
+    return default_keywords
+
+
 def print_banner():
     """打印启动横幅"""
     print("=" * 70)
@@ -139,10 +159,10 @@ def main():
         """
     )
     parser.add_argument(
-        '--keyword', 
-        type=str, 
-        required=True, 
-        help='搜索关键词 (支持多个关键词用逗号分隔)'
+        '--keyword',
+        type=str,
+        required=False,  # 改为非必需，可以从配置文件读取
+        help='搜索关键词 (支持多个关键词用逗号分隔，如不提供则从 config/keywords.txt 读取)'
     )
     parser.add_argument(
         '--limit', 
@@ -164,25 +184,34 @@ def main():
     )
     
     args = parser.parse_args()
-    
+
+    # 处理关键词参数
+    if args.keyword:
+        # 使用命令行提供的关键词
+        keywords = args.keyword
+        print(f"🎯 使用命令行关键词: {keywords}")
+    else:
+        # 从配置文件读取关键词
+        keywords = load_keywords_from_config()
+
     # 验证配置文件存在
     if not os.path.exists(args.config):
         print(f"❌ 配置文件不存在: {args.config}")
         sys.exit(1)
-    
+
     print(f"📋 配置信息:")
-    print(f"   关键词: {args.keyword}")
+    print(f"   关键词: {keywords}")
     print(f"   数量限制: {args.limit}")
     print(f"   配置文件: {args.config}")
     print(f"   最大重试: {args.retries}")
     print()
-    
+
     # 运行爬虫
     try:
         success = asyncio.run(run_crawler_with_retry(
-            args.keyword, 
-            args.limit, 
-            args.config, 
+            keywords,
+            args.limit,
+            args.config,
             args.retries
         ))
         

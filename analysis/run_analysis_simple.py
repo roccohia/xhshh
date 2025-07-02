@@ -140,7 +140,7 @@ def main():
         {
             'name': 'koc_filter',
             'description': 'KOC 用户筛选',
-            'extra_args': ['--min-likes', '150']
+            'extra_args': ['--min-likes', '200', '--min-followers', '2000', '--max-followers', '10000', '--target-keywords', '普拉提,健身,瑜伽']
         },
         {
             'name': 'topic_generator',

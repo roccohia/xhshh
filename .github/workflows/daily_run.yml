@@ -43,7 +43,14 @@ jobs:
         PYTHONPATH: ${{ github.workspace }}
       run: |
         echo "开始爬取小红书数据..."
-        python scripts/run_crawler_enhanced.py --keyword "普拉提,健身,瑜伽" --limit 100
+        # 优先使用配置文件中的关键词，如果没有则使用默认关键词
+        if [ -f "config/keywords.txt" ]; then
+          echo "使用配置文件中的关键词"
+          python scripts/run_crawler_enhanced.py --limit 100
+        else
+          echo "使用默认关键词"
+          python scripts/run_crawler_enhanced.py --keyword "普拉提,健身,瑜伽" --limit 100
+        fi
       continue-on-error: true
       
     - name: 检查爬取结果
