@@ -11,21 +11,8 @@ import subprocess
 from datetime import datetime
 
 
-def load_keywords_from_config():
-    """从配置文件加载关键词"""
-    keywords_file = 'config/keywords.txt'
-    
-    if os.path.exists(keywords_file):
-        try:
-            with open(keywords_file, 'r', encoding='utf-8') as f:
-                keywords = f.read().strip()
-                if keywords:
-                    print(f"📋 从配置文件加载关键词: {keywords}")
-                    return keywords
-        except Exception as e:
-            print(f"⚠️  读取关键词配置文件失败: {e}")
-    
-    # 返回默认关键词
+def get_default_keywords():
+    """获取默认关键词"""
     default_keywords = "普拉提,健身,瑜伽"
     print(f"📋 使用默认关键词: {default_keywords}")
     return default_keywords
@@ -263,7 +250,7 @@ def main():
         keywords = args.keyword
         print(f"🎯 使用命令行关键词: {keywords}")
     else:
-        keywords = load_keywords_from_config()
+        keywords = get_default_keywords()
     
     print(f"📋 配置信息:")
     print(f"   关键词: {keywords}")

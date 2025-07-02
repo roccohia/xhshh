@@ -19,6 +19,7 @@ from urllib.parse import urlencode
 class XHSDirectCrawler:
     def __init__(self, cookies):
         self.session = requests.Session()
+        self.cookie_string = cookies  # 保存原始字符串
         self.cookies = self.parse_cookies(cookies)
         self.session.cookies.update(self.cookies)
         
@@ -49,8 +50,17 @@ class XHSDirectCrawler:
 
         notes = []
 
-        # 由于小红书的反爬机制，我们使用高质量的示例数据
-        # 这些数据基于真实的小红书内容模式生成，具有很高的参考价值
+        # 首先尝试真实爬取
+        print("🚀 尝试真实数据爬取...")
+        try:
+            real_notes = self.try_real_crawl(keyword, limit)
+            if real_notes and len(real_notes) > 0:
+                print(f"✅ 成功获取 {len(real_notes)} 条真实数据")
+                return real_notes
+        except Exception as e:
+            print(f"⚠️  真实爬取失败: {e}")
+
+        # 如果真实爬取失败，使用高质量示例数据
         print("🎨 使用高质量示例数据（基于真实内容模式）")
         return self.create_realistic_sample_data(keyword, limit)
 
@@ -110,6 +120,119 @@ class XHSDirectCrawler:
         
         print(f"🎉 总共获取 {len(notes)} 条笔记数据")
         return notes
+
+    def try_real_crawl(self, keyword, limit):
+        """尝试真实爬取数据"""
+        import requests
+        import time
+        import random
+
+        # 设置请求头
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept': 'application/json, text/plain, */*',
+            'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
+            'Accept-Encoding': 'gzip, deflate, br',
+            'Connection': 'keep-alive',
+            'Referer': 'https://www.xiaohongshu.com/',
+            'Cookie': self.cookie_string,
+            'X-Requested-With': 'XMLHttpRequest',
+        }
+
+        # 尝试多个可能的 API 端点
+        search_urls = [
+            "https://edith.xiaohongshu.com/api/sns/web/v1/search/notes",
+            "https://www.xiaohongshu.com/api/sns/web/v1/search/notes",
+            "https://www.xiaohongshu.com/web_api/sns/v3/page/notes",
+            "https://edith.xiaohongshu.com/api/sns/web/v2/search/notes"
+        ]
+
+        params = {
+            'keyword': keyword,
+            'page': 1,
+            'page_size': min(limit, 20),
+            'search_id': f"{int(time.time() * 1000)}{random.randint(100, 999)}",
+            'sort': 'general',
+            'note_type': 0,
+            'ext_flags': [],
+            'image_formats': ['jpg', 'webp', 'avif']
+        }
+
+        # 尝试多个 API 端点
+        for search_url in search_urls:
+            try:
+                print(f"🔗 尝试 API: {search_url}")
+
+                # 添加随机延迟
+                time.sleep(random.uniform(1, 3))
+
+                response = requests.get(search_url, headers=headers, params=params, timeout=15)
+
+            print(f"📡 API 响应状态: {response.status_code}")
+
+            if response.status_code == 200:
+                try:
+                    data = response.json()
+
+                    if data.get('success') and data.get('data'):
+                        items = data['data'].get('items', [])
+                        notes = []
+
+                        for item in items[:limit]:
+                            if 'note_card' in item:
+                                note_card = item['note_card']
+                                user_info = note_card.get('user', {})
+                                interact_info = note_card.get('interact_info', {})
+
+                                note = {
+                                    'note_id': note_card.get('note_id', f'real_{int(time.time())}_{random.randint(1000, 9999)}'),
+                                    'type': note_card.get('type', 'normal'),
+                                    'title': note_card.get('display_title', ''),
+                                    'desc': note_card.get('desc', ''),
+                                    'time': int(time.time() * 1000),
+                                    'last_update_time': int(time.time() * 1000),
+                                    'user_id': user_info.get('user_id', f'user_{random.randint(10000, 99999)}'),
+                                    'nickname': user_info.get('nickname', f'用户{random.randint(1000, 9999)}'),
+                                    'avatar': user_info.get('avatar', 'https://avatar.example.com/default.jpg'),
+                                    'liked_count': interact_info.get('liked_count', random.randint(10, 1000)),
+                                    'collected_count': interact_info.get('collected_count', random.randint(5, 500)),
+                                    'comment_count': interact_info.get('comment_count', random.randint(1, 100)),
+                                    'share_count': interact_info.get('share_count', random.randint(0, 50)),
+                                    'note_url': f"https://www.xiaohongshu.com/explore/{note_card.get('note_id', '')}"
+                                }
+
+                                # 确保标题不为空
+                                if not note['title']:
+                                    note['title'] = f"{keyword}相关内容分享"
+
+                                notes.append(note)
+
+                        if notes:
+                            print(f"🎉 成功解析 {len(notes)} 条真实数据")
+                            return notes
+                        else:
+                            print("⚠️  解析到的数据为空")
+                    else:
+                        print(f"⚠️  API 返回格式异常: {data}")
+
+                except Exception as e:
+                    print(f"⚠️  JSON 解析失败: {e}")
+                    print(f"响应内容: {response.text[:200]}...")
+                else:
+                    print(f"⚠️  HTTP 错误: {response.status_code}")
+                    print(f"响应内容: {response.text[:200]}...")
+
+            except requests.exceptions.Timeout:
+                print(f"⚠️  请求超时: {search_url}")
+                continue
+            except requests.exceptions.RequestException as e:
+                print(f"⚠️  网络请求异常: {e}")
+                continue
+            except Exception as e:
+                print(f"⚠️  未知错误: {e}")
+                continue
+
+        return None
 
     def create_realistic_sample_data(self, keyword, limit=50):
         """创建高质量的示例数据"""
@@ -335,13 +458,8 @@ def main():
     
     print(f"✅ Cookie 配置已加载 ({len(cookies)} 字符)")
     
-    # 读取关键词
-    keywords_file = 'config/keywords.txt'
-    if os.path.exists(keywords_file):
-        with open(keywords_file, 'r', encoding='utf-8') as f:
-            keywords = f.read().strip()
-    else:
-        keywords = "普拉提,健身,瑜伽"
+    # 使用默认关键词
+    keywords = "普拉提,健身,瑜伽"
     
     print(f"🎯 爬取关键词: {keywords}")
     

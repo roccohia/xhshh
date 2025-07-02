@@ -30,21 +30,8 @@ print(f"   MediaCrawler 目录: {media_crawler_dir}")
 from config_manager import create_config_manager
 
 
-def load_keywords_from_config():
-    """从配置文件加载关键词"""
-    keywords_file = 'config/keywords.txt'
-
-    if os.path.exists(keywords_file):
-        try:
-            with open(keywords_file, 'r', encoding='utf-8') as f:
-                keywords = f.read().strip()
-                if keywords:
-                    print(f"📋 从配置文件加载关键词: {keywords}")
-                    return keywords
-        except Exception as e:
-            print(f"⚠️  读取关键词配置文件失败: {e}")
-
-    # 返回默认关键词
+def get_default_keywords():
+    """获取默认关键词"""
     default_keywords = "普拉提,健身,瑜伽"
     print(f"📋 使用默认关键词: {default_keywords}")
     return default_keywords
@@ -203,7 +190,7 @@ def main():
         print(f"🎯 使用命令行关键词: {keywords}")
     else:
         # 从配置文件读取关键词
-        keywords = load_keywords_from_config()
+        keywords = get_default_keywords()
 
     # 验证配置文件存在
     if not os.path.exists(args.config):
