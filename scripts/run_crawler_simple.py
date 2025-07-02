@@ -90,12 +90,19 @@ if __name__ == '__main__':
 
 
 def run_mediacrawler(keywords, limit=100):
-    """运行 MediaCrawler"""
+    """运行 MediaCrawler（GitHub Actions 优化版）"""
     print(f"🚀 启动 MediaCrawler...")
     print(f"   关键词: {keywords}")
     print(f"   数量限制: {limit}")
 
-    # 切换到 MediaCrawler 目录
+    # 在 GitHub Actions 环境中，先尝试真实爬取
+    # 如果失败再使用备用数据
+    if os.environ.get('GITHUB_ACTIONS') == 'true':
+        print("🔧 检测到 GitHub Actions 环境")
+        print("🚀 尝试真实爬取（如果 Cookie 有效）")
+        # 继续执行，不直接返回 False
+
+    # 本地环境尝试运行 MediaCrawler
     media_crawler_dir = 'core/media_crawler'
 
     if not os.path.exists(media_crawler_dir):
