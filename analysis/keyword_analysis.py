@@ -204,6 +204,44 @@ def analyze_keyword_trends(df, keywords_df, output_dir):
     return trends_df
 
 
+def analyze_keywords(input_file, output_dir='output'):
+    """关键词分析主函数 - 供其他模块调用"""
+    try:
+        # 读取数据
+        df = pd.read_csv(input_file)
+        print(f"📊 读取数据: {len(df)} 条记录")
+
+        # 确保输出目录存在
+        os.makedirs(output_dir, exist_ok=True)
+
+        # 提取关键词
+        stop_words = setup_jieba()
+        titles = df['title'].dropna().tolist()
+        top_keywords, word_counter = extract_keywords_from_titles(titles, stop_words)
+
+        # 生成词云图
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        wordcloud_output = os.path.join(output_dir, f'keyword_wordcloud_{timestamp}.png')
+        generate_wordcloud(word_counter, wordcloud_output)
+
+        # 保存关键词数据
+        keywords_df = save_keywords_csv(top_keywords,
+                                       os.path.join(output_dir, f'keywords_{timestamp}.csv'))
+
+        # 分析关键词趋势
+        trends_df = analyze_keyword_trends(df, keywords_df, output_dir)
+
+        print("✅ 关键词分析完成")
+        return {
+            'keywords': keywords_df,
+            'trends': trends_df,
+            'wordcloud': wordcloud_output
+        }
+
+    except Exception as e:
+        print(f"❌ 关键词分析失败: {e}")
+        return None
+
 def main():
     """主函数"""
     parser = argparse.ArgumentParser(

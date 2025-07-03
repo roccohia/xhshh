@@ -12,16 +12,30 @@ import csv
 import time
 import random
 import requests
+import logging
 from datetime import datetime
 from urllib.parse import urlencode
 
+# 设置日志
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler(sys.stdout)
+    ]
+)
+
 
 class XHSDirectCrawler:
-    def __init__(self, cookies):
+    def __init__(self, cookies, proxy_list=None):
         self.session = requests.Session()
         self.cookie_string = cookies  # 保存原始字符串
         self.cookies = self.parse_cookies(cookies)
         self.session.cookies.update(self.cookies)
+
+        # 代理配置
+        self.proxy_list = proxy_list or []
+        self.current_proxy_index = 0
         
         # 设置请求头
         self.session.headers.update({
@@ -43,6 +57,63 @@ class XHSDirectCrawler:
                     key, value = item.strip().split('=', 1)
                     cookies[key] = value
         return cookies
+
+    def get_next_proxy(self):
+        """获取下一个代理"""
+        if not self.proxy_list:
+            return None
+
+        proxy = self.proxy_list[self.current_proxy_index]
+        self.current_proxy_index = (self.current_proxy_index + 1) % len(self.proxy_list)
+        return proxy
+
+    def format_proxy(self, proxy_info):
+        """格式化代理信息"""
+        if not proxy_info:
+            return None
+
+        ip, port, username, password = proxy_info
+        proxy_url = f"http://{username}:{password}@{ip}:{port}"
+        return {
+            'http': proxy_url,
+            'https': proxy_url
+        }
+
+    def test_proxy(self, proxy_dict):
+        """测试代理是否可用"""
+        if not proxy_dict:
+            return False
+
+        try:
+            # 使用多个测试URL提高成功率
+            test_urls = [
+                "http://httpbin.org/ip",
+                "http://ip-api.com/json",
+                "https://api.ipify.org?format=json"
+            ]
+
+            for test_url in test_urls:
+                try:
+                    response = requests.get(test_url, proxies=proxy_dict, timeout=8)
+                    if response.status_code == 200:
+                        if 'httpbin.org' in test_url:
+                            ip_info = response.json()
+                            current_ip = ip_info.get('origin', 'unknown')
+                        elif 'ip-api.com' in test_url:
+                            ip_info = response.json()
+                            current_ip = ip_info.get('query', 'unknown')
+                        else:  # ipify
+                            ip_info = response.json()
+                            current_ip = ip_info.get('ip', 'unknown')
+
+                        print(f"✅ 代理测试成功，当前IP: {current_ip}")
+                        return True
+                except:
+                    continue
+
+        except Exception as e:
+            print(f"❌ 代理测试失败: {e}")
+        return False
     
     def search_notes(self, keyword, limit=50):
         """搜索笔记"""
@@ -127,7 +198,7 @@ class XHSDirectCrawler:
         import time
         import random
 
-        # 设置请求头
+        # 设置更完整的浏览器请求头，模拟真实浏览器
         headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
             'Accept': 'application/json, text/plain, */*',
@@ -135,8 +206,19 @@ class XHSDirectCrawler:
             'Accept-Encoding': 'gzip, deflate, br',
             'Connection': 'keep-alive',
             'Referer': 'https://www.xiaohongshu.com/',
+            'Origin': 'https://www.xiaohongshu.com',
             'Cookie': self.cookie_string,
             'X-Requested-With': 'XMLHttpRequest',
+            'Sec-Fetch-Dest': 'empty',
+            'Sec-Fetch-Mode': 'cors',
+            'Sec-Fetch-Site': 'same-site',
+            'Sec-Ch-Ua': '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
+            'Sec-Ch-Ua-Mobile': '?0',
+            'Sec-Ch-Ua-Platform': '"Windows"',
+            'Cache-Control': 'no-cache',
+            'Pragma': 'no-cache',
+            'DNT': '1',
+            'Upgrade-Insecure-Requests': '1',
         }
 
         # 尝试多个可能的 API 端点
@@ -144,7 +226,9 @@ class XHSDirectCrawler:
             "https://edith.xiaohongshu.com/api/sns/web/v1/search/notes",
             "https://www.xiaohongshu.com/api/sns/web/v1/search/notes",
             "https://www.xiaohongshu.com/web_api/sns/v3/page/notes",
-            "https://edith.xiaohongshu.com/api/sns/web/v2/search/notes"
+            "https://edith.xiaohongshu.com/api/sns/web/v2/search/notes",
+            "https://www.xiaohongshu.com/api/sns/web/v2/search/notes",
+            "https://edith.xiaohongshu.com/api/sns/web/v3/search/notes"
         ]
 
         params = {
@@ -160,13 +244,31 @@ class XHSDirectCrawler:
 
         # 尝试多个 API 端点
         for search_url in search_urls:
+            # 尝试使用代理
+            proxy_dict = None
+            if self.proxy_list:
+                proxy_info = self.get_next_proxy()
+                proxy_dict = self.format_proxy(proxy_info)
+                if proxy_dict:
+                    print(f"🌐 使用代理: {proxy_info[0]}:{proxy_info[1]}")
+                    # 测试代理
+                    if not self.test_proxy(proxy_dict):
+                        print("⚠️  代理测试失败，尝试直连")
+                        proxy_dict = None
+
             try:
                 print(f"🔗 尝试 API: {search_url}")
 
                 # 添加随机延迟
-                time.sleep(random.uniform(1, 3))
+                time.sleep(random.uniform(2, 5))
 
-                response = requests.get(search_url, headers=headers, params=params, timeout=15)
+                # 使用 session 来保持会话状态
+                session = requests.Session()
+                session.headers.update(headers)
+                if proxy_dict:
+                    session.proxies.update(proxy_dict)
+
+                response = session.get(search_url, params=params, timeout=20)
 
                 print(f"📡 API 响应状态: {response.status_code}")
 
@@ -375,8 +477,24 @@ HEADLESS = True
         return default_cookies
 
 
+def load_proxy_config():
+    """加载代理配置"""
+    # 你的代理列表
+    proxy_list = [
+        ("112.28.237.135", "35226", "uOXiWasQBg_1", "lV2IgHZ1"),
+        ("112.28.237.136", "30010", "uOXiWasQBg_3", "lV2IgHZ1"),
+        ("112.28.237.136", "39142", "uOXiWasQBg_2", "lV2IgHZ1")
+    ]
+
+    print(f"📡 加载了 {len(proxy_list)} 个代理")
+    for i, (ip, port, user, _) in enumerate(proxy_list, 1):
+        print(f"   代理{i}: {ip}:{port} (用户: {user})")
+
+    return proxy_list
+
+
 def main():
-    print("🚀 小红书直接爬虫启动")
+    print("启动小红书直接爬虫...")
 
     # 加载配置
     cookies = load_config()
@@ -390,10 +508,13 @@ def main():
     # 使用默认关键词
     keywords = "普拉提,健身,瑜伽"
     
-    print(f"🎯 爬取关键词: {keywords}")
-    
+    print(f"爬取关键词: {keywords}")
+
+    # 加载代理配置
+    proxy_list = load_proxy_config()
+
     # 创建爬虫实例
-    crawler = XHSDirectCrawler(cookies)
+    crawler = XHSDirectCrawler(cookies, proxy_list)
     
     # 爬取数据
     all_notes = []
@@ -416,19 +537,19 @@ def main():
         success = crawler.save_to_csv(all_notes, output_file)
 
         if success:
-            print(f"🎉 爬取完成！获取了 {len(all_notes)} 条真实数据")
+            print(f"爬取完成！获取了 {len(all_notes)} 条真实数据")
             return True
         else:
-            print("❌ 数据保存失败")
+            print("数据保存失败")
             return False
     else:
-        print("❌ 没有获取到任何真实数据")
-        print("💡 可能的原因:")
+        print("没有获取到任何真实数据")
+        print("可能的原因:")
         print("   - Cookie 已过期，需要更新")
         print("   - 小红书 API 端点已变更")
         print("   - 网络连接问题")
         print("   - 反爬机制阻止了请求")
-        print("🔧 建议:")
+        print("建议:")
         print("   1. 更新 Cookie 配置")
         print("   2. 检查网络连接")
         print("   3. 稍后重试")
