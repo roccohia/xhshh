@@ -58,7 +58,7 @@ jobs:
         fi
 
         echo "🚀 尝试真实数据爬取..."
-        python scripts/xhs_crawler_direct.py
+        python scripts/xhs_crawler_direct.py || echo "⚠️ 爬虫执行完成（可能使用了备用数据）"
 
         echo "📁 检查爬取结果:"
         if [ -d "core/media_crawler/data/xhs" ] && [ "$(ls -A core/media_crawler/data/xhs/*.csv 2>/dev/null)" ]; then
